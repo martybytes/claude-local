@@ -69,6 +69,24 @@ When the user reports the *whole desktop* feels slow — **mouse movement, windo
 
 **Key principle:** a machine that measures healthy on *every* sweep is itself the finding — stop trimming processes/startup items and look at the display → GPU → driver → input path.
 
+## GPU VRAM contention from local TTS (cursor stalls "in sessions")
+
+A specific, high-yield case of the perceptual-slowness pattern: the cursor/desktop stutters **during work sessions** (especially right when an event fires — a task finishing, a question, a permission prompt) on a box whose CPU/RAM/disk are idle. Cause: a local **GPU** text-to-speech service runs neural inference on the **same GPU that drives the displays**, on a card whose **VRAM is already saturated** (usually an Ollama model pinned with `OLLAMA_KEEP_ALIVE=-1`). Each synthesis evicts the compositor's surfaces → global micro-stutter at ~0% GPU util. Invisible to `perf-snapshot`/`perf-capture` by design.
+
+**Don't reason it out by hand — run the tool:**
+
+```powershell
+.\tools\windows\diagnostics\gpu-tts-diagnose.ps1        # read-only triage + verdict
+.\tools\windows\diagnostics\gpu-tts-quiet.ps1           # preview the fix
+.\tools\windows\diagnostics\gpu-tts-quiet.ps1 -All -Apply   # disable Claude TTS, stop GPU TTS containers, kill hung relays, unload idle Ollama models (reversible: -Undo)
+```
+
+Key facts (full writeup: [`docs/windows/cursor-stall-gpu-tts-runbook.md`](../../../docs/windows/cursor-stall-gpu-tts-runbook.md)):
+- **Trigger:** Claude Code TTS hooks fire on five events (`Stop`, `StopFailure`, `Notification`, `PermissionRequest`, `AskUserQuestion`) → an HTTP POST to a Kokoro/Chatterbox GPU container each time. Disable via `~/.claude/tts/config.json` `enabled:false`, or move TTS to the **CPU** container image.
+- **VRAM holder:** `docker exec ollama ollama ps` shows resident models; `keep_alive` `-1`/forever pins VRAM. Durable fix: recreate Ollama with `OLLAMA_KEEP_ALIVE=10m` (preserve the named `ollama` volume — models survive).
+- **Idle-iGPU red herring:** `Win32_VideoController` reports a refresh rate for an integrated GPU **with no monitor attached**, mimicking a cross-adapter split. Confirm the real compositor by **dedicated VRAM per adapter** (`\GPU Adapter Memory(*)\Dedicated Usage`) — GBs vs < 100 MB. The tool does this for you.
+- **Hung relays:** leftover `cc-tts-debug`/`cc-speak-play` chains can stick for hours holding the audio path; the tool kills them and clears the stale play-lock.
+
 ## Reading the snapshot
 
 **CPU column is accumulated seconds**, not live %. A process showing 9000s has burned 9000 CPU-seconds since it started. To get live activity, run `perf-watch` for 30 seconds and watch the delta column.

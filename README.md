@@ -63,6 +63,7 @@ claude-local/
 │   └── windows/
 │       ├── scantopdf-lockup-runbook.md   # ScanToPDF lockup diagnosis + auto-recovery
 │       ├── scantopdf-dashboard-guide.md  # ScanToPDF status dashboard — install/use/security
+│       ├── cursor-stall-gpu-tts-runbook.md  # Cursor/desktop stutter from GPU TTS + Ollama VRAM — diagnose + fix
 │       └── whfb-cloud-kerberos-trust-runbook.md  # Hello PIN 0xC00000BB on hybrid join — diagnosis + cloud-trust fix
 ├── tools/                             # Executable scripts, organized by OS
 │   ├── windows/                       # PowerShell — .ps1
@@ -72,6 +73,8 @@ claude-local/
 │   │   │   ├── perf-capture.ps1       # Unattended background monitor -> log (intermittent)
 │   │   │   ├── perf-analyze.ps1       # Parse a capture log -> culprits + slow windows
 │   │   │   ├── proc-track.ps1         # Track named procs' CPU+I/O over time (AV/EDR scan bursts); -Summarize reads it back
+│   │   │   ├── gpu-tts-diagnose.ps1   # Read-only triage: GPU VRAM / TTS-container / Ollama contention (cursor stall)
+│   │   │   ├── gpu-tts-quiet.ps1      # Reversible fix: disable TTS, stop GPU TTS containers, kill relays, unload Ollama
 │   │   │   └── dev-allowlist.ps1      # Shared dev-tool allowlist (dot-sourced by perf-* for -ExcludeDev)
 │   │   ├── startup/
 │   │   │   ├── startup-inventory.ps1     # Read-only audit of every startup vector
@@ -173,6 +176,8 @@ Scripts Claude can run directly. All paths are relative — no hardcoded machine
 | `tools/windows/diagnostics/perf-capture.ps1` | Unattended background monitor; appends timestamped CPU/disk/RAM samples + spike flag to a log (for intermittent slowdowns); writes a PID file | `-IntervalSec`, `-CpuPct`, `-DiskQ`, `-DurationMin` |
 | `tools/windows/diagnostics/perf-analyze.ps1` | Parse a perf-capture log into ranked culprits, slow-time windows, and an optional time-focused view | `-Path`, `-Around HH:mm`, `-WindowMin`, `-CpuPct`, `-ExcludeDev`, `-Exclude <names>`, `-OnlyDev` |
 | `tools/windows/diagnostics/proc-track.ps1` | Track named processes' CPU% + file-I/O ops/sec + RAM over time to a log (catches AV/EDR scan bursts that `perf-capture`'s CPU/disk-queue thresholds miss — high IOPS, low queue); `-Summarize` reads the log back | `-Names`, `-IntervalSec`, `-DurationMin`, `-SpikeCpu`, `-SpikeIops`, `-Summarize`, `-Path` |
+| `tools/windows/diagnostics/gpu-tts-diagnose.ps1` | Read-only triage for cursor/desktop stutter from **GPU contention** (VRAM saturation, GPU TTS containers, Ollama keep-alive, Claude Code TTS hooks, hung relays) — flags causes + verdict when CPU/disk/RAM look idle. See [runbook](docs/windows/cursor-stall-gpu-tts-runbook.md) | `-SaveLog` |
+| `tools/windows/diagnostics/gpu-tts-quiet.ps1` | **Reversible** remediation: disable Claude TTS (backed up), stop GPU TTS containers, kill hung relays, unload idle Ollama models; previews by default | `-All`, `-DisableClaudeTts`, `-StopTtsContainers`, `-KillHungRelays`, `-UnloadOllama`, `-Apply`, `-Undo` |
 | `tools/windows/diagnostics/dev-allowlist.ps1` | Shared dev-tool allowlist + matcher (`node`/Docker+WSL/PowerToys/Tailscale); dot-sourced by the perf-* tools to power `-ExcludeDev`. Not run directly | _(library — dot-sourced)_ |
 | `tools/windows/startup/startup-inventory.ps1` | Read-only audit: Run keys (incl. WOW6432), startup folders, logon/boot tasks, auto-start services, with enable/disable state | `-IncludeMicrosoftTasks`, `-SaveLog` |
 | `tools/windows/startup/inspect-task.ps1` | Show full details of named scheduled task(s): action, principal, triggers | `-Name <task>[,<task>...]` |
@@ -220,6 +225,7 @@ Portable bash, used by both Linux and macOS (the `/capture` command dispatches h
 | `/perf` | All (Windows + Linux + macOS) | Run perf-snapshot, interpret output, return top issues + recommended actions; dispatches by `Platform:` |
 | `/capture` | All (Windows + Linux + macOS) | `start`/`stop`/`status`/`analyze [HH:mm]` a background perf-capture for intermittent ("comes and goes") slowdowns; dispatches by `Platform:` |
 | `/startup` | Windows only | Run startup-inventory, classify items into disable / investigate / leave-alone tiers, stage commands |
+| `/gpu-tts` | Windows only | Diagnose cursor/desktop stutter from GPU contention (local TTS + Ollama VRAM); `quiet` to fix, `undo` to reverse |
 | `/disable-startup` | Windows only | Disable a startup item (preset or ad-hoc) via `disable-startup-item.ps1`: preview → confirm → apply → verify; `-Undo` to reverse |
 | `/ship` | All | Commit any uncommitted work (with doc check) and push to the remote |
 

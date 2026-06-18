@@ -17,6 +17,8 @@ threshold watching, unattended capture of *intermittent* slowdowns, and per-proc
 | [`perf-capture.ps1`](perf-capture.ps1) | **Unattended** background monitor; appends timestamped CPU/disk/RAM samples + a spike flag to a log; writes a PID file | `-IntervalSec`, `-CpuPct`, `-DiskQ`, `-DurationMin`, `-Top` |
 | [`perf-analyze.ps1`](perf-analyze.ps1) | Parse a perf-capture log into ranked culprits, slow-time windows, and an optional time-focused view | `-Path`, `-Around HH:mm`, `-WindowMin`, `-CpuPct`, `-DiskQ`, `-Top`, `-ExcludeDev`, `-Exclude`, `-OnlyDev` |
 | [`proc-track.ps1`](proc-track.ps1) | Track named processes' CPU% + file-I/O ops/sec + RAM over time to a log — catches AV/EDR scan bursts (high IOPS, low disk queue) that `perf-capture` thresholds miss; `-Summarize` reads the log back | `-Names`, `-IntervalSec`, `-DurationMin`, `-SpikeCpu`, `-SpikeIops`, `-Summarize`, `-Path` |
+| [`gpu-tts-diagnose.ps1`](gpu-tts-diagnose.ps1) | Read-only triage for cursor/desktop stutter from **GPU contention**: VRAM saturation, GPU TTS containers (Kokoro/Chatterbox), Ollama keep-alive, Claude Code TTS hooks, hung TTS relays. Flags causes + prints a verdict | `-SaveLog` |
+| [`gpu-tts-quiet.ps1`](gpu-tts-quiet.ps1) | **Reversible** remediation for the above: disable Claude TTS (backed up), stop GPU TTS containers, kill hung relays, unload idle Ollama models. Previews by default | `-All`, `-DisableClaudeTts`, `-StopTtsContainers`, `-KillHungRelays`, `-UnloadOllama`, `-Apply`, `-Undo` |
 | [`dev-allowlist.ps1`](dev-allowlist.ps1) | Shared dev-tool allowlist + matcher (node / Docker+WSL / PowerToys / Tailscale); **dot-sourced** by the perf-* tools to power `-ExcludeDev`. Not run directly | _(library — dot-sourced)_ |
 
 ## Quick start
@@ -35,7 +37,17 @@ threshold watching, unattended capture of *intermittent* slowdowns, and per-proc
 # Suspect an AV/EDR/RMM agent -> sample its CPU + I/O over time, then summarize
 .\tools\windows\diagnostics\proc-track.ps1 -Names MsMpEng,Sysmon64 -DurationMin 60
 .\tools\windows\diagnostics\proc-track.ps1 -Summarize
+
+# Cursor/desktop stutters "in sessions" but compute is idle -> GPU/TTS contention triage, then fix
+.\tools\windows\diagnostics\gpu-tts-diagnose.ps1
+.\tools\windows\diagnostics\gpu-tts-quiet.ps1 -All -Apply     # reversible: -Undo
 ```
+
+> **GPU/TTS contention** (`gpu-tts-*`) is a distinct failure mode from compute slowness: a local GPU
+> TTS service (Kokoro) + a VRAM-pinned Ollama model stall the *display compositor*, so CPU/disk/RAM
+> sweeps look clean. Full mechanism + manual `OLLAMA_KEEP_ALIVE` fix:
+> [`docs/windows/cursor-stall-gpu-tts-runbook.md`](../../../docs/windows/cursor-stall-gpu-tts-runbook.md);
+> driven by the [`/gpu-tts`](../../../.claude/commands/gpu-tts.md) command.
 
 ## Notes
 
