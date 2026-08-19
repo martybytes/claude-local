@@ -176,6 +176,7 @@ Each skill's `description` frontmatter starts with a scope tag — `[windows]`, 
 - `windows-scheduled-tasks` — Task Scheduler via PowerShell
 - `windows-system-settings` — common Win11 tweaks (taskbar, Explorer, dark mode, privacy)
 - `windows-perf-diagnosis` — diagnose slow/unresponsive machine; interpret perf-snapshot output; known hogs
+  - Whole-box lag with *idle-looking* CPU/disk: see [security-agent spawn-latency runbook](docs/windows/security-agent-spawn-latency-runbook.md) — stacked AV/EDR charge a per-`CreateProcess` tax that Task Manager cannot show
 - `windows-startup-management` — audit Run keys, startup folders, logon scheduled tasks, auto-start services; triage what to disable
 - `nilesoft-shell` — context-menu customization via Nilesoft Shell (.nss configs, register/unregister, themes)
 - `windows-dev-environment` — git, SSH, WSL, language toolchains, PowerShell profile, VS Code on Windows

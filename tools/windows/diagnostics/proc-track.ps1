@@ -78,6 +78,12 @@ $logPath  = Join-Path $logDir "$ts-proc-track.log"
 $pidPath  = Join-Path $logDir '.proc-track.pid'
 "$PID|$logPath" | Set-Content -Path $pidPath -Encoding ASCII
 
+# Normalize -Names: `pwsh -File script.ps1 -Names a,b,c` passes ONE literal string (the -File
+# parser does no type coercion), which silently produced a filter that matched nothing. Split on
+# commas/semicolons/whitespace so both -File and -Command invocations bind the same way.
+$Names = @($Names | ForEach-Object { $_ -split '[,;\s]+' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if (-not $Names.Count) { Write-Host 'No process names to track.' -ForegroundColor Red; exit 1 }
+
 $like = ($Names | ForEach-Object { "Name LIKE '{0}%'" -f $_ }) -join ' OR '
 
 function WriteLine([string]$s) { Add-Content -Path $logPath -Value $s; Write-Host $s }

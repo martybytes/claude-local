@@ -64,7 +64,8 @@ claude-local/
 │       ├── scantopdf-lockup-runbook.md   # ScanToPDF lockup diagnosis + auto-recovery
 │       ├── scantopdf-dashboard-guide.md  # ScanToPDF status dashboard — install/use/security
 │       ├── cursor-stall-gpu-tts-runbook.md  # Cursor/desktop stutter from GPU TTS + Ollama VRAM — diagnose + fix
-│       └── whfb-cloud-kerberos-trust-runbook.md  # Hello PIN 0xC00000BB on hybrid join — diagnosis + cloud-trust fix
+│       ├── whfb-cloud-kerberos-trust-runbook.md  # Hello PIN 0xC00000BB on hybrid join — diagnosis + cloud-trust fix
+│       └── security-agent-spawn-latency-runbook.md  # Whole-box lag from stacked AV/EDR: per-spawn tax + safe exclusion set
 ├── tools/                             # Executable scripts, organized by OS
 │   ├── windows/                       # PowerShell — .ps1
 │   │   ├── diagnostics/
@@ -175,7 +176,7 @@ Scripts Claude can run directly. All paths are relative — no hardcoded machine
 | `tools/windows/diagnostics/perf-watch.ps1` | Continuous monitor; highlights processes crossing CPU % or RAM MB thresholds (interactive, console) | `-IntervalSec`, `-CpuThreshold`, `-RamThresholdMb`, `-ExcludeDev`, `-Exclude <names>`, `-OnlyDev` |
 | `tools/windows/diagnostics/perf-capture.ps1` | Unattended background monitor; appends timestamped CPU/disk/RAM samples + spike flag to a log (for intermittent slowdowns); writes a PID file | `-IntervalSec`, `-CpuPct`, `-DiskQ`, `-DurationMin` |
 | `tools/windows/diagnostics/perf-analyze.ps1` | Parse a perf-capture log into ranked culprits, slow-time windows, and an optional time-focused view | `-Path`, `-Around HH:mm`, `-WindowMin`, `-CpuPct`, `-ExcludeDev`, `-Exclude <names>`, `-OnlyDev` |
-| `tools/windows/diagnostics/proc-track.ps1` | Track named processes' CPU% + file-I/O ops/sec + RAM over time to a log (catches AV/EDR scan bursts that `perf-capture`'s CPU/disk-queue thresholds miss — high IOPS, low queue); `-Summarize` reads the log back | `-Names`, `-IntervalSec`, `-DurationMin`, `-SpikeCpu`, `-SpikeIops`, `-Summarize`, `-Path` |
+| `tools/windows/diagnostics/proc-track.ps1` | Track named processes' CPU% + file-I/O ops/sec + RAM over time to a log (catches AV/EDR scan bursts that `perf-capture`'s CPU/disk-queue thresholds miss — high IOPS, low queue); `-Summarize` reads the log back. See [security-agent spawn-latency runbook](docs/windows/security-agent-spawn-latency-runbook.md) | `-Names`, `-IntervalSec`, `-DurationMin`, `-SpikeCpu`, `-SpikeIops`, `-Summarize`, `-Path` |
 | `tools/windows/diagnostics/gpu-tts-diagnose.ps1` | Read-only triage for cursor/desktop stutter from **GPU contention** (VRAM saturation, GPU TTS containers, Ollama keep-alive, Claude Code TTS hooks, hung relays) — flags causes + verdict when CPU/disk/RAM look idle. See [runbook](docs/windows/cursor-stall-gpu-tts-runbook.md) | `-SaveLog` |
 | `tools/windows/diagnostics/gpu-tts-quiet.ps1` | **Reversible** remediation: disable Claude TTS (backed up), stop GPU TTS containers, kill hung relays, unload idle Ollama models; previews by default | `-All`, `-DisableClaudeTts`, `-StopTtsContainers`, `-KillHungRelays`, `-UnloadOllama`, `-Apply`, `-Undo` |
 | `tools/windows/diagnostics/dev-allowlist.ps1` | Shared dev-tool allowlist + matcher (`node`/Docker+WSL/PowerToys/Tailscale); dot-sourced by the perf-* tools to power `-ExcludeDev`. Not run directly | _(library — dot-sourced)_ |
@@ -190,7 +191,7 @@ Scripts Claude can run directly. All paths are relative — no hardcoded machine
 | `tools/windows/identity/enable-whfb-cloud-trust-client.ps1` | Client-side cloud-trust pilot: backs up then sets `UseCloudTrustForOnPremAuth=1` (HKLM policy), starts `WbioSrvc` if stopped. Run elevated | `-Undo` |
 | `tools/windows/system/install-mcp-servers.ps1` | Merge an `mcpServers` block into the Claude Desktop config so local/LAN MCP servers reach Desktop chat **and** Cowork. MSIX-aware (Store builds relocate the config out of `%APPDATA%`), preserves `preferences`, backs up, previews by default. See [runbook](docs/windows/mcp-local-servers.md) | `-SourceConfig`, `-TargetConfig`, `-Apply`, `-Undo` |
 
-📁 **Per-directory guides:** [`diagnostics/`](tools/windows/diagnostics/README.md) · [`startup/`](tools/windows/startup/README.md) · [`monitoring/`](tools/windows/monitoring/README.md) (ScanToPDF watchdog + status dashboard; [lockup runbook](docs/windows/scantopdf-lockup-runbook.md) · [dashboard guide](docs/windows/scantopdf-dashboard-guide.md)) · [`identity/`](tools/windows/identity/README.md) (WHfB cloud Kerberos trust; [runbook](docs/windows/whfb-cloud-kerberos-trust-runbook.md)) · [`system/`](tools/windows/system/README.md) (local MCP server wiring; [runbook](docs/windows/mcp-local-servers.md))
+📁 **Per-directory guides:** [`diagnostics/`](tools/windows/diagnostics/README.md) ([security-agent spawn-latency runbook](docs/windows/security-agent-spawn-latency-runbook.md)) · [`startup/`](tools/windows/startup/README.md) · [`monitoring/`](tools/windows/monitoring/README.md) (ScanToPDF watchdog + status dashboard; [lockup runbook](docs/windows/scantopdf-lockup-runbook.md) · [dashboard guide](docs/windows/scantopdf-dashboard-guide.md)) · [`identity/`](tools/windows/identity/README.md) (WHfB cloud Kerberos trust; [runbook](docs/windows/whfb-cloud-kerberos-trust-runbook.md)) · [`system/`](tools/windows/system/README.md) (local MCP server wiring; [runbook](docs/windows/mcp-local-servers.md))
 
 ### Linux (`tools/linux/`)
 
