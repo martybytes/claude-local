@@ -19,6 +19,24 @@ Contributing noise seen on this machine: **hung `cc-tts-debug` → `cc-speak-pla
 
 ---
 
+## Standing one up in the first place
+
+If no `kokoro` container exists yet — `gpu-tts-diagnose.ps1` reports "no TTS containers found" and
+nothing listens on 8880 — use:
+
+```powershell
+.\tools\windows\system\setup-kokoro-docker.ps1               # preview
+.\tools\windows\system\setup-kokoro-docker.ps1 -Apply         # pull + create/start it (GPU by default)
+.\tools\windows\system\setup-kokoro-docker.ps1 -Cpu -Apply    # CPU-only — sidesteps this whole runbook
+```
+
+See [`tools/windows/system/README.md`](../../tools/windows/system/README.md#setup-kokoro-dockerps1)
+for config knobs and safety notes. **On Blackwell (RTX 50-series) cards the GPU image's default
+`:latest` tag is broken** — see the gotcha below — the script defaults to the working `v0.8.0-cu128`
+tag instead.
+
+---
+
 ## Diagnose (fast)
 
 ```powershell
@@ -77,3 +95,4 @@ Confirm: `docker inspect ollama --format '{{range .Config.Env}}{{println .}}{{en
 - **`pgrep -f orion_tts_switch` self-matches.** Any `wsl … bash -lc` whose command line contains the search string is itself a hit. Use the bracket trick (`[o]rion`) or match by **listening port** (8782) instead — the diagnose tool uses the port.
 - **`local.json` overrides were silently ignored** (`Merge-CcTtsHashtable` iterated `$Over.PSObject.Properties` on a *hashtable*, yielding `Count/Keys/Values` instead of the data keys). Fixed upstream in `terminal-stack` (commit on `windows/.claude/hooks/cc-tts-lib.ps1`). On a machine still carrying the old hook, set `enabled` directly in `config.json` rather than `local.json`.
 - **A "calm" perf-snapshot does not rule this out** — by design, GPU-VRAM contention is invisible to CPU/disk/RAM sweeps.
+- **Kokoro's `:latest` GPU tag silently fails on Blackwell (RTX 50-series).** The container pulls, starts, and then dies on the first synthesis with `CUDA error: no kernel image is available for execution on the device` — `:latest` ships a CUDA 12.6 PyTorch build with kernels only through RTX 40-series (sm_90). It looks created (`docker ps` shows it, briefly) but crash-loops under `restart unless-stopped`. Fix: use the `v0.8.0-cu128` tag (CUDA 12.8, includes sm_120). `setup-kokoro-docker.ps1` defaults to it for this reason.

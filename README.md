@@ -87,9 +87,12 @@ claude-local/
 │   │       ├── scantopdf-dashboard.ps1          # Read-only status dashboard (web server + HTML snapshot)
 │   │       ├── scantopdf-dashboard.lib.ps1      # Dashboard collection + rendering (hot-reloaded by the server)
 │   │       └── install-scantopdf-dashboard.ps1  # Installer: SYSTEM start-up task + urlacl + subnet firewall rule
-│   │   └── identity/
+│   │   ├── identity/
 │   │       ├── setup-whfb-cloud-kerberos-trust.ps1   # Server-side: create AzureADKerberos object (once per domain)
 │   │       └── enable-whfb-cloud-trust-client.ps1    # Client pilot: UseCloudTrustForOnPremAuth=1 (-Undo reverts)
+│   │   └── system/
+│   │       ├── install-mcp-servers.ps1     # Merge mcpServers block into Claude Desktop config (MSIX-aware; -Undo reverts)
+│   │       └── setup-kokoro-docker.ps1     # Create/start local Kokoro TTS container on :8880, GPU by default (-Undo removes)
 │   ├── linux/                         # bash — .sh (perf-snapshot.sh)
 │   ├── macos/                         # bash — .sh (perf-snapshot.sh)
 │   └── unix/                          # portable bash for Linux + macOS
@@ -190,6 +193,7 @@ Scripts Claude can run directly. All paths are relative — no hardcoded machine
 | `tools/windows/identity/setup-whfb-cloud-kerberos-trust.ps1` | One-time server-side WHfB cloud Kerberos trust setup: creates the `AzureADKerberos` object + `krbtgt_AzureAD` in on-prem AD so Entra issues partial TGTs. Run as Domain Admin (+ Entra admin sign-in) | `-Domain`, `-UserPrincipalName` |
 | `tools/windows/identity/enable-whfb-cloud-trust-client.ps1` | Client-side cloud-trust pilot: backs up then sets `UseCloudTrustForOnPremAuth=1` (HKLM policy), starts `WbioSrvc` if stopped. Run elevated | `-Undo` |
 | `tools/windows/system/install-mcp-servers.ps1` | Merge an `mcpServers` block into the Claude Desktop config so local/LAN MCP servers reach Desktop chat **and** Cowork. MSIX-aware (Store builds relocate the config out of `%APPDATA%`), preserves `preferences`, backs up, previews by default. See [runbook](docs/windows/mcp-local-servers.md) | `-SourceConfig`, `-TargetConfig`, `-Apply`, `-Undo` |
+| `tools/windows/system/setup-kokoro-docker.ps1` | Create/start a local Kokoro TTS container reachable at `http://127.0.0.1:8880`. GPU-accelerated by default (`v0.8.0-cu128`, needed for Blackwell/RTX 50-series — the plain `:latest` tag lacks sm_120 kernels); `-Cpu` avoids display-GPU contention entirely. Previews by default | `-Cpu`, `-GpuTag`, `-Port`, `-ContainerName`, `-Apply`, `-Undo` |
 
 📁 **Per-directory guides:** [`diagnostics/`](tools/windows/diagnostics/README.md) ([security-agent spawn-latency runbook](docs/windows/security-agent-spawn-latency-runbook.md)) · [`startup/`](tools/windows/startup/README.md) · [`monitoring/`](tools/windows/monitoring/README.md) (ScanToPDF watchdog + status dashboard; [lockup runbook](docs/windows/scantopdf-lockup-runbook.md) · [dashboard guide](docs/windows/scantopdf-dashboard-guide.md)) · [`identity/`](tools/windows/identity/README.md) (WHfB cloud Kerberos trust; [runbook](docs/windows/whfb-cloud-kerberos-trust-runbook.md)) · [`system/`](tools/windows/system/README.md) (local MCP server wiring; [runbook](docs/windows/mcp-local-servers.md))
 

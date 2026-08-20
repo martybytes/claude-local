@@ -5,6 +5,7 @@ Machine-level Windows configuration tasks that aren't diagnostics, startup, moni
 | Script | What it does |
 |---|---|
 | `install-mcp-servers.ps1` | Merge an `mcpServers` block into the Claude Desktop config so local/LAN MCP servers appear in Desktop chat **and** Cowork. MSIX-aware, backs up, previews by default, `-Undo` reverses. |
+| `setup-kokoro-docker.ps1` | Create/start a local Kokoro TTS container reachable at `http://127.0.0.1:8880`. GPU-accelerated by default, previews by default, `-Undo` removes it. |
 
 ---
 
@@ -59,3 +60,57 @@ Three things make the naive approach fail silently:
 [`docs/windows/mcp-local-servers.md`](../../../docs/windows/mcp-local-servers.md) — the full runbook:
 the local-vs-cloud execution boundary that decides which Claude surfaces can reach LAN servers at all,
 the `mcp-remote` header quirk, Grafana's feature-gated `/api/mcp`, Claude Code wiring, and verification.
+
+---
+
+## `setup-kokoro-docker.ps1`
+
+### Quick start
+
+```powershell
+.\tools\windows\system\setup-kokoro-docker.ps1               # preview — shows the docker pull/run it would use
+.\tools\windows\system\setup-kokoro-docker.ps1 -Apply         # pull + create/start the 'kokoro' container
+.\tools\windows\system\setup-kokoro-docker.ps1 -Cpu -Apply    # CPU-only image — no display-GPU contention
+.\tools\windows\system\setup-kokoro-docker.ps1 -Undo -Apply   # remove the container (image stays cached)
+```
+
+Idempotent: re-running `-Apply` against an already-running container just reports it's up; against a
+stopped one it `docker start`s rather than recreating.
+
+### Why the GPU tag matters
+
+The default GPU image tag is `v0.8.0-cu128`, not `:latest`. Kokoro-FastAPI's `:latest` tag ships a
+PyTorch build compiled for CUDA 12.6, whose kernels only cover GTX 900 through RTX 40-series
+(compute capability ≤ 9.0). On an RTX 50-series card (Blackwell, sm_120) it pulls fine, starts, and
+then dies on the first inference with `CUDA error: no kernel image is available for execution on
+the device` — the container looks created but never serves. `-GpuTag v0.8.0-cu128` uses the build
+compiled with CUDA 12.8, which includes Blackwell kernels. Pass `-GpuTag v0.8.0-cu126` explicitly on
+older (pre-Blackwell) cards if you want to pin rather than take the default.
+
+### Config knobs
+
+| Parameter | Default | Notes |
+|---|---|---|
+| `-Cpu` | off | Use `ghcr.io/remsky/kokoro-fastapi-cpu:latest` instead of the GPU image — slower, but zero contention with the display GPU (see the [cursor-stall runbook](../../../docs/windows/cursor-stall-gpu-tts-runbook.md)). |
+| `-GpuTag` | `v0.8.0-cu128` | GPU image tag. Override to `v0.8.0-cu126` for GTX 900–RTX 40-series cards. Ignored with `-Cpu`. |
+| `-Port` | `8880` | Host port mapped to the container's port 8880. |
+| `-ContainerName` | `kokoro` | Matches what `gpu-tts-diagnose.ps1`/`gpu-tts-quiet.ps1` already look for. |
+| `-Apply` | off | Without it the script previews and changes nothing. |
+| `-Undo` | off | Removes the container (`docker rm -f`). Still requires `-Apply` to write. |
+
+### Safety notes
+
+- No registry writes, no services, no elevation — this is a per-user Docker Desktop container.
+- `-Apply` on a fresh setup runs `docker pull` (network) then `docker run -d --restart unless-stopped
+  --gpus all -p 8880:8880 <image>`; nothing is backed up because nothing existing is overwritten.
+- `-Undo -Apply` removes the container but leaves the pulled image cached — run
+  `docker rmi ghcr.io/remsky/kokoro-fastapi-gpu:v0.8.0-cu128` yourself to reclaim that disk space.
+- Running the GPU image means every synthesis call shares the display GPU. If cursor/desktop
+  stutter shows up afterward, that's exactly the scenario `gpu-tts-diagnose.ps1` and
+  `gpu-tts-quiet.ps1` exist to catch and fix.
+
+### See also
+
+[`docs/windows/cursor-stall-gpu-tts-runbook.md`](../../../docs/windows/cursor-stall-gpu-tts-runbook.md) —
+the GPU-contention runbook this script's container feeds into: how Kokoro competes with the display
+GPU, and how to diagnose/quiet it once it's running.
