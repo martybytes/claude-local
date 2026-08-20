@@ -21,8 +21,16 @@ Contributing noise seen on this machine: **hung `cc-tts-debug` → `cc-speak-pla
 
 ## Standing one up in the first place
 
-If no `kokoro` container exists yet — `gpu-tts-diagnose.ps1` reports "no TTS containers found" and
-nothing listens on 8880 — use:
+**Day-to-day management of this machine's `kokoro` container now lives in the sibling
+`docker-local` repo** (`docker-local/kokoro/`), not here — see its `README.md` for the full
+writeup (same Blackwell/GPU-tag gotcha, plus a `docker-compose.yml`). Use
+`docker compose up -d` / `down` from that folder to start/stop/recreate it.
+
+`tools/windows/system/setup-kokoro-docker.ps1` in *this* repo is a standalone duplicate of the
+same script kept here for parity with the diagnose/quiet tooling below (which only care that a
+container named `kokoro` exists — they work the same regardless of which repo created it). If no
+`kokoro` container exists yet — `gpu-tts-diagnose.ps1` reports "no TTS containers found" and
+nothing listens on 8880 — either use `docker-local/kokoro` or, equivalently, this copy:
 
 ```powershell
 .\tools\windows\system\setup-kokoro-docker.ps1               # preview
@@ -32,8 +40,8 @@ nothing listens on 8880 — use:
 
 See [`tools/windows/system/README.md`](../../tools/windows/system/README.md#setup-kokoro-dockerps1)
 for config knobs and safety notes. **On Blackwell (RTX 50-series) cards the GPU image's default
-`:latest` tag is broken** — see the gotcha below — the script defaults to the working `v0.8.0-cu128`
-tag instead.
+`:latest` tag is broken** — see the gotcha below — both the script and the `docker-local` compose
+file default to the working `v0.8.0-cu128` tag instead.
 
 ---
 

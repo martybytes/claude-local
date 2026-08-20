@@ -65,6 +65,13 @@ the `mcp-remote` header quirk, Grafana's feature-gated `/api/mcp`, Claude Code w
 
 ## `setup-kokoro-docker.ps1`
 
+**Day-to-day management moved to `docker-local/kokoro`** (a sibling repo, not part of this one) —
+it has a `docker-compose.yml` plus a standalone copy of this same script, and its `README.md` is
+the canonical writeup (image tags, the Blackwell gotcha, verification steps). This copy stays here
+so `gpu-tts-diagnose.ps1`/`gpu-tts-quiet.ps1` have a matching creation tool in-repo; both still work
+identically against the container either one creates, since they just look for a container named
+`kokoro`.
+
 ### Quick start
 
 ```powershell
